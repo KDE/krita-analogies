@@ -190,14 +190,14 @@ void KisAnalogiesFilter::process(KisPaintDeviceSP src, KisPaintDeviceSP dst,
     
     int radius = 2;
     int diameter = radius * 2 + 1;
-    int dimension = 3 * diameter * diameter;
+    int dimension = Feature::size() * diameter * diameter;
     
-    int totalCacheLineCount = 3*(diameter + rect.width());
+    int totalCacheLineCount = (diameter + rect.width());
     
-    float** pixels = new float*[diameter];
+    Feature** pixels = new Feature*[diameter];
     for(int i = 0; i < diameter; i++)
     {
-        pixels[i] = new float[ totalCacheLineCount ];
+        pixels[i] = new Feature[ totalCacheLineCount ];
     }
     
     KisColorSpace* cs = dst->colorSpace();
@@ -222,8 +222,8 @@ void KisAnalogiesFilter::process(KisPaintDeviceSP src, KisPaintDeviceSP dst,
 //         KisRandomAccessor radAcc = /*gaussianPyramidImgAPrime->levels[i].device*/ imgAPrimeDevice->createRandomAccessor(0,0,true);
 //         KisHLineIterator itAcc = imgAPrimeDevice->createHLineIterator(xAcc, yAcc, area.width(), true); //< if I don't do that, for some reason the imgA' isn't read correctly
         KisHLineIterator itDst = devBPrime->createHLineIterator(area.x(), area.y(), area.width(), true);
-        int cacheLineCount = 3*(area.width() + diameter); // countains the local count of the cache
-        int cacheLineSize = cacheLineCount * sizeof(float); // countains the local size (in bytes) of the cache
+        int cacheLineCount = (area.width() + diameter); // countains the local count of the cache
+        int cacheLineSize = cacheLineCount * sizeof(Feature); // countains the local size (in bytes) of the cache
         // Intialize the first row of the cache, as the cache needs to be full before it is possible to start creating descriptors for the key points
         for(int indexInPixels = radius; indexInPixels < diameter - 1; ++indexInPixels)
         {
@@ -254,9 +254,9 @@ void KisAnalogiesFilter::process(KisPaintDeviceSP src, KisPaintDeviceSP dst,
 //                 kdDebug() << " New search " << x << endl;
                 for(int i = 0; i < diameter; i++)
                 {
-                    for(int j = 0; j < 3*diameter; j++)
+                    for(int j = 0; j < diameter; j++)
                     {
-                        (queryPoint)[ subPos ] = pixels[i][j + 3*x];
+                        pixels[i][j + x].convertToArray(queryPoint + subPos );
 //                         kdDebug() << subPos << " "<< pixels[i][j + x] << endl;
                      subPos++;
                     }

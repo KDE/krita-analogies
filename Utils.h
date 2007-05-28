@@ -21,17 +21,19 @@
 #ifndef _UTILS_H_
 #define _UTILS_H_
 
-inline void deviceToCache(KisHLineIterator& it, float* line, int radius)
+#include "Feature.h"
+
+inline void deviceToCache(KisHLineIterator& it, Feature* line, int radius)
 {
     // Convert the first pixel of the row to initiliaze it
     int indexInLine = 0;
     {
         const float* pixel = reinterpret_cast<const float*>(it.oldRawData());
-        for(indexInLine = 0; indexInLine <= 3*radius; indexInLine += 3)
+        for(indexInLine = 0; indexInLine <= radius; indexInLine += 3)
         {
-            line[indexInLine] = pixel[0];
-            line[indexInLine+1] = pixel[1];
-            line[indexInLine+2] = pixel[2];
+            line[indexInLine].setL( pixel[0] );
+            line[indexInLine].setA( pixel[1] );
+            line[indexInLine].setB( pixel[2] );
         }
     }
     ++it;
@@ -39,23 +41,21 @@ inline void deviceToCache(KisHLineIterator& it, float* line, int radius)
     {
 //         kdDebug() << *it.oldRawData() << " => in L : " << labPixel[0] << endl;
         const float* pixel = reinterpret_cast<const float*>(it.oldRawData());
-        line[indexInLine] = pixel[0];
-        line[indexInLine+1] = pixel[1];
-        line[indexInLine+2] = pixel[2];
+        line[indexInLine].setL( pixel[0] );
+        line[indexInLine].setA( pixel[1] );
+        line[indexInLine].setB( pixel[2] );
         ++it;
-        indexInLine+=3;
+        ++indexInLine;
     }
-    for(int i = 0; i < 3 * radius; ++i)
+    for(int i = 0; i < radius; ++i)
     {
-        line[indexInLine + i] =line[indexInLine-3];
-        line[indexInLine + i + 1] =line[indexInLine-2];
-        line[indexInLine + i + 2] =line[indexInLine-1];
+        line[indexInLine + i] = line[indexInLine-1];
     }
 }
 
-inline void swapCache(float** pixels, int dimension)
+inline void swapCache(Feature** pixels, int dimension)
 {
-    float* firstLine= pixels[0];
+    Feature* firstLine= pixels[0];
     for(int i =1; i < dimension; i++)
     {
         pixels[i - 1] = pixels[i];

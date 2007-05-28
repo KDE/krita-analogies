@@ -29,17 +29,17 @@
 FeatureSearch::FeatureSearch( KisPaintDeviceSP dev, QRect area, int r) : m_countFeatures(area.width() * area.height()), m_radius(r), m_diameter(2*r+1), m_tree(0)
 {
     // Compute the size of the descriptors
-    m_spaceDimension = 3 * diameter() * diameter();
+    m_spaceDimension = Feature::size() * diameter() * diameter();
     // Allocate the array of points
     m_pointArray = annAllocPts( m_countFeatures, m_spaceDimension );
     // Initialize the descriptors
-    int cacheLineCount = 3 * (area.width() + diameter());
-    size_t cacheLineSize = cacheLineCount * sizeof(float);
+    int cacheLineCount = (area.width() + diameter());
+    size_t cacheLineSize = cacheLineCount * sizeof(Feature);
     // pixels will hold a cache of the luminosity to feed the descriptors
-    float** pixels = new float*[diameter()];
+    Feature** pixels = new Feature*[diameter()];
     for(int i = 0; i < diameter(); i++)
     {
-        pixels[i] = new float[ cacheLineCount ];
+        pixels[i] = new Feature[ cacheLineCount ];
     }
 //     KisColorSpace* cs = dev->colorSpace();
     // Read the first 'radius' line to initialize the cache
@@ -74,9 +74,9 @@ FeatureSearch::FeatureSearch( KisPaintDeviceSP dev, QRect area, int r) : m_count
 //             kdDebug() << " Feature : " << posInAP << endl;
             for(int i = 0; i < diameter(); i++)
             {
-                for(int j = 0; j < 3*diameter(); j++)
+                for(int j = 0; j < diameter(); j++)
                 {
-                    (m_pointArray[ posInAP ])[ subPos ] = pixels[i][j + 3*x];
+                    pixels[i][j + x].convertToArray((m_pointArray[ posInAP ]) + subPos );
 //                     kdDebug() << subPos << " "<< pixels[i][j + x] << endl;
                     subPos++;
                 }

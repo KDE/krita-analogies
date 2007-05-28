@@ -3,7 +3,7 @@ add_subdirectory(libann)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR} libann/include ${CMAKE_SOURCE_DIR}/lib)
 
-set(kritaAnalogies_PART_SRCS Analogies.cpp FeatureSearch.cpp )
+set(kritaAnalogies_PART_SRCS Analogies.cpp FeatureSearch.cpp Feature.cpp )
 
 kde3_automoc(${kritaAnalogies_PART_SRCS})
 
