@@ -33,12 +33,19 @@
 /**
  */
 class FeatureSearch {
+        struct SearchPairInfo {
+            KisPaintDeviceSP devA;
+            QRect area;
+            KisPaintDeviceSP devAPrime;
+        };
     public:
-        FeatureSearch( KisPaintDeviceSP dev, QRect area, int r);
+        FeatureSearch( int r);
         ~FeatureSearch();
+        void addPair( KisPaintDeviceSP devA, QRect area, KisPaintDeviceSP devAPrime);
+        void initSearch();
         inline int radius() { return m_radius; }
         inline int diameter() { return m_diameter; }
-        int search(ANNpoint point);
+        double search(ANNpoint point);
     private:
         ANNpointArray m_pointArray;
         int m_countFeatures; ///< the number of features in the search space
@@ -47,6 +54,8 @@ class FeatureSearch {
         int m_spaceDimension; ///< the size of the descriptor
         ANNkd_tree* m_tree; ///< the search tree
         QRect m_area;
+        std::vector<SearchPairInfo> m_infos;
+        std::vector<float> m_values;
 };
 
 #endif

@@ -177,16 +177,17 @@ void KisAnalogiesFilter::process(KisPaintDeviceSP src, KisPaintDeviceSP dst,
     // Convert A' to B' 's colorspace
     imgAPrimeDevice->convertTo( labCS );
     
-    int NbLevels = 0;//QMIN(ANbLevels, BNbLevels);
-    kdDebug() << "Nb of levels for the pyramid = " << NbLevels << endl;
+//     ANbLevels = 1;
+    BNbLevels = 1;
+    
     // Compute pyramids
     KisBasicMathToolbox2 tlb2;
-    kdDebug() << "Computing the gaussian pyramid for image A" << endl;
-    KisBasicMathToolbox2::Pyramid* gaussianPyramidImgA = tlb2.toGaussianPyramid(imgADevice, NbLevels, rectA);
-    kdDebug() << "Computing the gaussian pyramid for image A'" << endl;
-    KisBasicMathToolbox2::Pyramid* gaussianPyramidImgAPrime = tlb2.toGaussianPyramid(imgAPrimeDevice, NbLevels, rectA);
-    kdDebug() << "Computing the gaussian pyramid for image B" << endl;
-    KisBasicMathToolbox2::Pyramid* gaussianPyramidImgB = tlb2.toGaussianPyramid(srcLAB, NbLevels, rect);
+    kdDebug() << "Computing the simple pyramid for image A with " << ANbLevels << " levels" << endl;
+    KisBasicMathToolbox2::Pyramid* gaussianPyramidImgA = tlb2.toSimplePyramid(imgADevice, ANbLevels, rectA);
+    kdDebug() << "Computing the simple pyramid for image A' with " << ANbLevels << " levels" << endl;
+    KisBasicMathToolbox2::Pyramid* gaussianPyramidImgAPrime = tlb2.toSimplePyramid(imgAPrimeDevice, ANbLevels, rectA);
+    kdDebug() << "Computing the simple pyramid for image B with " << BNbLevels << " levels" << endl;
+    KisBasicMathToolbox2::Pyramid* gaussianPyramidImgB = tlb2.toSimplePyramid(srcLAB, BNbLevels, rect);
     kdDebug() << gaussianPyramidImgA->levels.last().size << " " << gaussianPyramidImgAPrime->levels.last().size << " " << gaussianPyramidImgB->levels.last().size << endl;
     
     int radius = 2;
@@ -208,17 +209,23 @@ void KisAnalogiesFilter::process(KisPaintDeviceSP src, KisPaintDeviceSP dst,
     KisPaintDeviceSP devBPrime = 0;//new KisPaintDevice(cs,"B'");
     
     ANNpoint queryPoint = annAllocPt( dimension );
-
-    // Go throught the levels of the pyramid
-    for(int i = NbLevels; i >=0; i--)
+    
+    kdDebug() << "Initialization of the FeatureSearch" << endl;
+    FeatureSearch aSearch(radius);
+    
+    for(int i = ANbLevels; i >=0; i--)
     {
-        kdDebug() << "Level " << i << " of the pyramid:" << endl;
+        aSearch.addPair( gaussianPyramidImgA->levels[0].device, QRect(QPoint(0,0), gaussianPyramidImgA->levels[0].size), gaussianPyramidImgAPrime->levels[0].device );
+    }
+    aSearch.initSearch();
+    
+    // Go throught the levels of the pyramid
+    kdDebug() << "Search features for image B" << endl;
+    for(int i = BNbLevels; i >=0; i--)
+    {
+        kdDebug() << " Level " << i << " of the pyramid:" << endl;
         
-        kdDebug() << "  - initialization of the FeatureSearch for image A" << endl;
-        QRect rectA(QPoint(0,0),gaussianPyramidImgA->levels[i].size);
-        FeatureSearch aSearch( gaussianPyramidImgA->levels[i].device, rectA, radius );
-        
-        kdDebug() << "  - search features for image B" << endl;
+        QRect rectA(QPoint(0,0),gaussianPyramidImgA->levels[0].size);
         
         devBPrime = new KisPaintDevice(* gaussianPyramidImgB->levels[i].device);
         
@@ -273,10 +280,11 @@ void KisAnalogiesFilter::process(KisPaintDeviceSP src, KisPaintDeviceSP dst,
                     }
                 }
                 // Search
+#if 0
                 int index = aSearch.search(queryPoint);
                 int xAcc = (index % rectA.width() );
                 int yAcc = (index / rectA.width() );
-                kdDebug() << "Index: " << index << " xAcc = " << xAcc  << " yAcc = "  << yAcc << endl;
+//                 kdDebug() << "Index: " << index << " xAcc = " << xAcc  << " yAcc = "  << yAcc << endl;
 //                 radAcc.moveTo( xAcc , yAcc );
 //                 kdDebug() << (int)itAcc.oldRawData()[0] << " " << (int)itAcc.oldRawData()[1] << " " << (int)itAcc.oldRawData()[2] << " " << (int)itAcc.oldRawData()[3] << endl;
 //                 kdDebug() << (int)radAcc.rawData()[0] << " " << (int)radAcc.rawData()[1] << " " << (int)radAcc.rawData()[2] << " " << (int)radAcc.rawData()[3] << endl;
@@ -284,6 +292,8 @@ void KisAnalogiesFilter::process(KisPaintDeviceSP src, KisPaintDeviceSP dst,
                 KisHLineIterator itAcc = gaussianPyramidImgAPrime->levels[i].device->createHLineIterator(xAcc, yAcc, area.width(), true); //< the random accessor don't work correctly for cs != rgb8..
 //                 labPixel[0] = reinterpret_cast<float*>(radAcc.rawData())[0];
                 reinterpret_cast<float*>(itDst.rawData())[0] =  reinterpret_cast<float*>(itAcc.rawData())[0];
+#endif
+                reinterpret_cast<float*>(itDst.rawData())[0] = aSearch.search(queryPoint);
                 ++itDst;
             }
             itDst.nextRow();
