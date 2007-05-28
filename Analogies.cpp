@@ -174,7 +174,7 @@ void KisAnalogiesFilter::process(KisPaintDeviceSP src, KisPaintDeviceSP dst,
     KisPaintDeviceSP srcLAB = new KisPaintDevice(*src);
     srcLAB->convertTo(labCS);
     // Convert A' to B' 's colorspace
-//     imgAPrimeDevice->convertTo( dst->colorSpace());
+    imgAPrimeDevice->convertTo( labCS );
     
     int NbLevels = 0;//QMIN(ANbLevels, BNbLevels);
     kdDebug() << "Nb of levels for the pyramid = " << NbLevels << endl;
@@ -200,7 +200,9 @@ void KisAnalogiesFilter::process(KisPaintDeviceSP src, KisPaintDeviceSP dst,
         pixels[i] = new float[ totalCacheLineCount ];
     }
     
-//     KisColorSpace* cs = dst->colorSpace();
+    KisColorSpace* cs = dst->colorSpace();
+    Q_UINT16 labPixel[4];
+    Q_UINT8* labPixelU8 = reinterpret_cast<Q_UINT8*>(labPixel);
     
     KisPaintDeviceSP devBPrime = dst;//new KisPaintDevice(cs,"B'");
     
@@ -217,8 +219,8 @@ void KisAnalogiesFilter::process(KisPaintDeviceSP src, KisPaintDeviceSP dst,
         // Read the first 'radius' line to initialize the cache
         QRect area = QRect(QPoint(0,0), gaussianPyramidImgB->levels[i].size);
         KisHLineIterator it = gaussianPyramidImgB->levels[i].device->createHLineIterator(area.x(), area.y(), area.width(), false);
-        KisRandomAccessor radAcc = /*gaussianPyramidImgAPrime->levels[i].device*/ imgAPrimeDevice->createRandomAccessor(0,0,true);
-        KisHLineIterator itAcc = imgAPrimeDevice->createHLineIterator(271, 124, area.width(), true); //< if I don't do that, for some reason the imgA' isn't read correctly
+//         KisRandomAccessor radAcc = /*gaussianPyramidImgAPrime->levels[i].device*/ imgAPrimeDevice->createRandomAccessor(0,0,true);
+//         KisHLineIterator itAcc = imgAPrimeDevice->createHLineIterator(xAcc, yAcc, area.width(), true); //< if I don't do that, for some reason the imgA' isn't read correctly
         KisHLineIterator itDst = devBPrime->createHLineIterator(area.x(), area.y(), area.width(), true);
         int cacheLineCount = 3*(area.width() + diameter); // countains the local count of the cache
         int cacheLineSize = cacheLineCount * sizeof(float); // countains the local size (in bytes) of the cache
@@ -264,10 +266,16 @@ void KisAnalogiesFilter::process(KisPaintDeviceSP src, KisPaintDeviceSP dst,
                 int xAcc = (index % rectA.width() );
                 int yAcc = (index / rectA.width() );
                 kdDebug() << "Index: " << index << " xAcc = " << xAcc  << " yAcc = "  << yAcc << endl;
-                radAcc.moveTo( xAcc , yAcc );
+//                 radAcc.moveTo( xAcc , yAcc );
 //                 kdDebug() << (int)itAcc.oldRawData()[0] << " " << (int)itAcc.oldRawData()[1] << " " << (int)itAcc.oldRawData()[2] << " " << (int)itAcc.oldRawData()[3] << endl;
-                kdDebug() << (int)radAcc.rawData()[0] << " " << (int)radAcc.rawData()[1] << " " << (int)radAcc.rawData()[2] << " " << (int)radAcc.rawData()[3] << endl;
-                memcpy( itDst.rawData() , radAcc.rawData(), 4*sizeof(Q_UINT8));
+//                 kdDebug() << (int)radAcc.rawData()[0] << " " << (int)radAcc.rawData()[1] << " " << (int)radAcc.rawData()[2] << " " << (int)radAcc.rawData()[3] << endl;
+//                 kdDebug() <<  reinterpret_cast<Q_UINT16*>(radAcc.rawData())[0] << " " << reinterpret_cast<Q_UINT16*>(itAcc.rawData())[0] << endl;
+                KisHLineIterator itAcc = imgAPrimeDevice->createHLineIterator(xAcc, yAcc, area.width(), true); //< the random accessor don't work correctly for cs != rgb8..
+                cs->toLabA16( itDst.rawData(), labPixelU8, 1);
+//                 labPixel[0] = reinterpret_cast<Q_UINT16*>(radAcc.rawData())[0];
+                labPixel[0] = reinterpret_cast<Q_UINT16*>(itAcc.rawData())[0];
+                cs->fromLabA16( labPixelU8, itDst.rawData(), 1 );
+//                 memcpy( itDst.rawData() , radAcc.rawData(), 4*sizeof(Q_UINT8));
                 ++itDst;
             }
             itDst.nextRow();
