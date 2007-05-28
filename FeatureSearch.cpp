@@ -103,8 +103,8 @@ int FeatureSearch::search(ANNpoint point)
     float epsilon = 1.0;
     m_tree->annkSearch( point, countSamples, resultIndex, resultDist, 0.0/*epsilon*/);
     
-    for(int i = 0; i < countSamples; i++)
-    {
+//     for(int i = 0; i < countSamples; i++)
+//     {
 //         kdDebug() << i << "th search result: " << resultIndex[0] << " Distance = " << resultDist[0] << endl;
 /*        double dist = 0.0;
         for(int k = 0; k < m_spaceDimension; k++)
@@ -113,7 +113,7 @@ int FeatureSearch::search(ANNpoint point)
             dist += v*v;
         }*/
 //         kdDebug() << dist << endl; 
-    }
+//     }
     return resultIndex[0];
 }
 

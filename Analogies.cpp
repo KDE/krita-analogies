@@ -27,6 +27,7 @@
 #include <klocale.h>
 #include <kgenericfactory.h>
 
+#include <kis_composite_op.h>
 #include <kis_doc.h>
 #include <kis_filter_registry.h>
 #include <kis_global.h>
@@ -200,11 +201,11 @@ void KisAnalogiesFilter::process(KisPaintDeviceSP src, KisPaintDeviceSP dst,
         pixels[i] = new Feature[ totalCacheLineCount ];
     }
     
-    KisColorSpace* cs = dst->colorSpace();
-    Q_UINT16 labPixel[4];
-    Q_UINT8* labPixelU8 = reinterpret_cast<Q_UINT8*>(labPixel);
+//     KisColorSpace* cs = dst->colorSpace();
+//     Q_UINT16 labPixel[4];
+//     Q_UINT8* labPixelU8 = reinterpret_cast<Q_UINT8*>(labPixel);
     
-    KisPaintDeviceSP devBPrime = dst;//new KisPaintDevice(cs,"B'");
+    KisPaintDeviceSP devBPrime = 0;//new KisPaintDevice(cs,"B'");
     
     ANNpoint queryPoint = annAllocPt( dimension );
 
@@ -212,29 +213,39 @@ void KisAnalogiesFilter::process(KisPaintDeviceSP src, KisPaintDeviceSP dst,
     for(int i = NbLevels; i >=0; i--)
     {
         kdDebug() << "Level " << i << " of the pyramid:" << endl;
+        
         kdDebug() << "  - initialization of the FeatureSearch for image A" << endl;
         QRect rectA(QPoint(0,0),gaussianPyramidImgA->levels[i].size);
         FeatureSearch aSearch( gaussianPyramidImgA->levels[i].device, rectA, radius );
+        
         kdDebug() << "  - search features for image B" << endl;
+        
+        devBPrime = new KisPaintDevice(* gaussianPyramidImgB->levels[i].device);
+        
         // Read the first 'radius' line to initialize the cache
         QRect area = QRect(QPoint(0,0), gaussianPyramidImgB->levels[i].size);
         KisHLineIterator it = gaussianPyramidImgB->levels[i].device->createHLineIterator(area.x(), area.y(), area.width(), false);
 //         KisRandomAccessor radAcc = /*gaussianPyramidImgAPrime->levels[i].device*/ imgAPrimeDevice->createRandomAccessor(0,0,true);
 //         KisHLineIterator itAcc = imgAPrimeDevice->createHLineIterator(xAcc, yAcc, area.width(), true); //< if I don't do that, for some reason the imgA' isn't read correctly
-        KisHLineIterator itDst = devBPrime->createHLineIterator(area.x(), area.y(), area.width(), true);
+        KisHLineIterator itDst = devBPrime ->createHLineIterator(area.x(), area.y(), area.width(), true);
+        
+        // Initialize cache constants
         int cacheLineCount = (area.width() + diameter); // countains the local count of the cache
         int cacheLineSize = cacheLineCount * sizeof(Feature); // countains the local size (in bytes) of the cache
+        
         // Intialize the first row of the cache, as the cache needs to be full before it is possible to start creating descriptors for the key points
         for(int indexInPixels = radius; indexInPixels < diameter - 1; ++indexInPixels)
         {
             deviceToCache(it, pixels[indexInPixels], radius);
             it.nextRow();
         }
+        
         // Copy the first line, as the first 'radius' columns are initialized with the same pixel value
-        for(int i = 0; i < radius; ++i)
+        for(int k = 0; k < radius; ++k)
         {
-            memcpy(pixels[i], pixels[radius], cacheLineSize);
+            memcpy(pixels[k], pixels[radius], cacheLineSize);
         }
+        
         // Main loop
         for(int y = 0; y < area.height(); y++)
         {
@@ -252,11 +263,11 @@ void KisAnalogiesFilter::process(KisPaintDeviceSP src, KisPaintDeviceSP dst,
                 // Create the search point
                 int subPos = 0;
 //                 kdDebug() << " New search " << x << endl;
-                for(int i = 0; i < diameter; i++)
+                for(int u = 0; u < diameter; u++)
                 {
-                    for(int j = 0; j < diameter; j++)
+                    for(int v = 0; v < diameter; v++)
                     {
-                        pixels[i][j + x].convertToArray(queryPoint + subPos );
+                        pixels[u][v + x].convertToArray(queryPoint + subPos );
 //                         kdDebug() << subPos << " "<< pixels[i][j + x] << endl;
                      subPos++;
                     }
@@ -270,18 +281,24 @@ void KisAnalogiesFilter::process(KisPaintDeviceSP src, KisPaintDeviceSP dst,
 //                 kdDebug() << (int)itAcc.oldRawData()[0] << " " << (int)itAcc.oldRawData()[1] << " " << (int)itAcc.oldRawData()[2] << " " << (int)itAcc.oldRawData()[3] << endl;
 //                 kdDebug() << (int)radAcc.rawData()[0] << " " << (int)radAcc.rawData()[1] << " " << (int)radAcc.rawData()[2] << " " << (int)radAcc.rawData()[3] << endl;
 //                 kdDebug() <<  reinterpret_cast<Q_UINT16*>(radAcc.rawData())[0] << " " << reinterpret_cast<Q_UINT16*>(itAcc.rawData())[0] << endl;
-                KisHLineIterator itAcc = imgAPrimeDevice->createHLineIterator(xAcc, yAcc, area.width(), true); //< the random accessor don't work correctly for cs != rgb8..
-                cs->toLabA16( itDst.rawData(), labPixelU8, 1);
-//                 labPixel[0] = reinterpret_cast<Q_UINT16*>(radAcc.rawData())[0];
-                labPixel[0] = reinterpret_cast<Q_UINT16*>(itAcc.rawData())[0];
-                cs->fromLabA16( labPixelU8, itDst.rawData(), 1 );
-//                 memcpy( itDst.rawData() , radAcc.rawData(), 4*sizeof(Q_UINT8));
+                KisHLineIterator itAcc = gaussianPyramidImgAPrime->levels[i].device->createHLineIterator(xAcc, yAcc, area.width(), true); //< the random accessor don't work correctly for cs != rgb8..
+//                 labPixel[0] = reinterpret_cast<float*>(radAcc.rawData())[0];
+                reinterpret_cast<float*>(itDst.rawData())[0] =  reinterpret_cast<float*>(itAcc.rawData())[0];
                 ++itDst;
             }
             itDst.nextRow();
             swapCache(pixels, diameter);
         }
     }
+    // Transform to 16bit integer LAB
+    KisPaintDeviceSP dstLAB = new KisPaintDevice(*dst);
+    dstLAB->convertTo(labCS);
+    tlb2.fromFloatDevice( devBPrime, dstLAB, rect);
+    
+    // Transform to final color space and bitblt it on the destination
+    dstLAB->convertTo(dst->colorSpace());
+    KisPainter p(dst);
+    p.bitBlt( rect.x(), rect.y(), COMPOSITE_OVER, dstLAB, rect.x(), rect.y(), rect.width(), rect.height());
     
     // delete the luminosity cache
     for(int i = 0; i < diameter; i++)
