@@ -177,17 +177,18 @@ void KisAnalogiesFilter::process(KisPaintDeviceSP src, KisPaintDeviceSP dst,
     // Convert A' to B' 's colorspace
     imgAPrimeDevice->convertTo( labCS );
     
-//     ANbLevels = 1;
-    BNbLevels = 1;
+    int NbLevels = QMIN(ANbLevels, BNbLevels);
+    NbLevels = 1;
+    
     
     // Compute pyramids
     KisBasicMathToolbox2 tlb2;
-    kdDebug() << "Computing the simple pyramid for image A with " << ANbLevels << " levels" << endl;
-    KisBasicMathToolbox2::Pyramid* gaussianPyramidImgA = tlb2.toSimplePyramid(imgADevice, ANbLevels, rectA);
-    kdDebug() << "Computing the simple pyramid for image A' with " << ANbLevels << " levels" << endl;
-    KisBasicMathToolbox2::Pyramid* gaussianPyramidImgAPrime = tlb2.toSimplePyramid(imgAPrimeDevice, ANbLevels, rectA);
+    kdDebug() << "Computing the simple pyramid for image A with " << NbLevels << " levels" << endl;
+    KisBasicMathToolbox2::Pyramid* gaussianPyramidImgA = tlb2.toSimplePyramid(imgADevice, NbLevels, rectA);
+    kdDebug() << "Computing the simple pyramid for image A' with " << NbLevels << " levels" << endl;
+    KisBasicMathToolbox2::Pyramid* gaussianPyramidImgAPrime = tlb2.toSimplePyramid(imgAPrimeDevice, NbLevels, rectA);
     kdDebug() << "Computing the simple pyramid for image B with " << BNbLevels << " levels" << endl;
-    KisBasicMathToolbox2::Pyramid* gaussianPyramidImgB = tlb2.toSimplePyramid(srcLAB, BNbLevels, rect);
+    KisBasicMathToolbox2::Pyramid* gaussianPyramidImgB = tlb2.toSimplePyramid(srcLAB, NbLevels, rect);
     kdDebug() << gaussianPyramidImgA->levels.last().size << " " << gaussianPyramidImgAPrime->levels.last().size << " " << gaussianPyramidImgB->levels.last().size << endl;
     
     int radius = 2;
@@ -210,23 +211,19 @@ void KisAnalogiesFilter::process(KisPaintDeviceSP src, KisPaintDeviceSP dst,
     
     ANNpoint queryPoint = annAllocPt( dimension );
     
-    kdDebug() << "Initialization of the FeatureSearch" << endl;
-    FeatureSearch aSearch(radius);
-    
-    for(int i = ANbLevels; i >=0; i--)
-    {
-        aSearch.addPair( gaussianPyramidImgA->levels[0].device, QRect(QPoint(0,0), gaussianPyramidImgA->levels[0].size), gaussianPyramidImgAPrime->levels[0].device );
-    }
-    aSearch.initSearch();
-    
     // Go throught the levels of the pyramid
-    kdDebug() << "Search features for image B" << endl;
-    for(int i = BNbLevels; i >=0; i--)
+    for(int i = NbLevels; i >=0; i--)
     {
-        kdDebug() << " Level " << i << " of the pyramid:" << endl;
-        
+        kdDebug() << "Level " << i << " of the pyramid:" << endl;
         QRect rectA(QPoint(0,0),gaussianPyramidImgA->levels[0].size);
         
+        kdDebug() << " - Initialization of the FeatureSearch" << endl;
+        FeatureSearch aSearch(radius);
+        aSearch.addPair( gaussianPyramidImgA->levels[0].device, QRect(QPoint(0,0), gaussianPyramidImgA->levels[0].size), gaussianPyramidImgAPrime->levels[0].device );
+        aSearch.initSearch();
+        
+        
+        kdDebug() << " - Search features for image B" << endl;
         devBPrime = new KisPaintDevice(* gaussianPyramidImgB->levels[i].device);
         
         // Read the first 'radius' line to initialize the cache
