@@ -1,6 +1,19 @@
 [Desktop Entry]
 Encoding=UTF-8
 Name=Analogies Filter
+Name[el]=Φίλτρο αναλογιών
+Name[es]=Filtro de analogías
+Name[et]=Analoogiafilter
+Name[fr]=Filtre d'analogie
+Name[ga]=Scagaire Analach
+Name[gl]=Filtro de analoxías
+Name[km]=តម្រង​ស្រដៀង​គ្នា
+Name[pt]=Filtro de Analogias
+Name[pt_BR]=Filtro de Analogias
+Name[ro]=Filtru analogii
+Name[sv]=Analogifilter
+Name[uk]=Фільтр порівняння
+Name[x-test]=xxAnalogies Filterxx
 Comment=
 ServiceTypes=Krita/Filter
 Type=Service
